@@ -12,5 +12,5 @@ const port = process.env.port;
 connectDB();
 app.use("/api", empRouter);
 app.listen(port, () => {
-  console.log("App  is running on the port-", port);
+  console.log("App  is running on the port-",port);
 });
