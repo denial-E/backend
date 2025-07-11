@@ -38,9 +38,9 @@ export const getEmployeeDetailById = async (req, res) => {
   }
 };
 
-export const updateEmployeeById = async (req, res) => {
+export const updateEmployeeById = async(req, res) => {
   try {
-    const { email } = req.params;
+    const { email } = req.params.id;
     console.log("email", email);
     const { firstName, lastName, designation } = req.body;
 
@@ -53,7 +53,7 @@ export const updateEmployeeById = async (req, res) => {
       return res.status(400).json({ message: "emp not found" });
     }
     const updateEmp = await Employee.find({ email });
-    res.status(200).json({ data: updateEmp });
+    res.status(200).json({ data:updateEmp });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error" });
