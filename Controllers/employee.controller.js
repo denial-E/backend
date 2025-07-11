@@ -40,8 +40,8 @@ export const getEmployeeDetailById = async (req, res) => {
 
 export const updateEmployeeById = async(req, res) => {
   try {
-    const { email } = req.params.id;
-    // console.log("email", email);
+    const { email } = req.params;
+    console.log("email", email);
     const { firstName, lastName, designation } = req.body;
 
     const result = await Employee.updateOne(
