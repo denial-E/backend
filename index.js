@@ -16,7 +16,7 @@ connectDB();
 app.get("/", (req, res) => {
   res.status(200).send("App is Working fine");
 });
-app.use("/api/user",userrouter)
+app.use('/api/user',userrouter)
 app.listen(port, () => {
   console.log("http://localhost:", port);
 });
