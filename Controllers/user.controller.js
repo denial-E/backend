@@ -45,16 +45,20 @@ export const login = async (req, res) => {
 };
 export const forgotPassword = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
+    const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "Email not found" });
 
     const resetToken = crypto.randomBytes(32).toString("hex");
-    user.resetToken = resetToken;
+    const hashedToken = crypto
+      .createHash("sha256")
+      .update(resetToken)
+      .digest("hex");
+      user.resetToken = hashedToken;
     user.resetTokenExpire = Date.now() + 10 * 60 * 1000;
 
     await user.save();
 
-    const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+    const resetURL = `${process.env.CLIENT_URL}/${resetToken}`;
 
     await sendEmail(
       user.email,
@@ -62,10 +66,12 @@ export const forgotPassword = async (req, res) => {
       `Reset your password using this link: ${resetURL}`
     );
 
-    res.json({ message: "Reset email sent" });
+    res.status(200).json({ message: "Reset email sent" });
   } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+     console.log("ERROR RESPONSE:", err.response?.data);
+      console.log("STATUS:", err.response?.status);
+}
+  
 };
 
 export const resetPassword = async (req, res) => {
