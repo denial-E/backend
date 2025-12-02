@@ -18,3 +18,5 @@ export const authMiddleware = async (req, res, next) => {
     res.status(400).json({ error: "token is invalid" });
   }
 };
+
+

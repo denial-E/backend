@@ -1,4 +1,4 @@
-import User from "../Models/user.schema.js";
+import User from "../Models/auth.schema.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -8,7 +8,7 @@ dotenv.config();
 
 export const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: "Email already in use" });
@@ -16,7 +16,7 @@ export const register = async (req, res) => {
 
     const hashed = await bcrypt.hash(password, 10);
 
-    const user = await User.create({ name, email, password: hashed });
+    const user = await User.create({ name, email, role, password: hashed });
     await user.save();
     res
       .status(200)
@@ -59,8 +59,8 @@ export const forgotPassword = async (req, res) => {
       .digest("hex");
     user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 min
     await user.save();
-    const resetURL = `${process.env.CLIENT_URL}/reset-password/:${resetToken}`;
-    const message = `Click this link to reset your password:\n\n ${resetURL}`;
+    const resetURL = `${resetToken}`;
+    const message = `${resetURL}`;
 
     await sendEmail(user.email, "Password Reset", message);
 
@@ -70,23 +70,23 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-export const resetPassword = async (req, res) => {
+export const ResetPassword = async (req, res) => {
   try {
+     const { token } = req.params;
+     const { password } = req.body;
     const hashedToken = crypto
       .createHash("sha256")
-      .update(req.params.token)
+      .update(token)
       .digest("hex");
 
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
       resetPasswordExpire: { $gt: Date.now() },
     });
-
-    if (!user)
+    if (!user) {
       return res.status(400).json({ message: "Invalid or expired token" });
-
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(req.body.password, salt);
+    }
+    user.password = await bcrypt.hash(password, 10);
 
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
