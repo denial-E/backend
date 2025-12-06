@@ -1,28 +1,23 @@
 import User from "../Models/auth.schema.js";
-import bcrypt from "bcrypt";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import sendEmail from "../utils/sendEmail.js";
-import crypto from "crypto";
+
 dotenv.config();
 
-export const register = async (req, res) => {
+export const signIn = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ error: "Email already in use" });
+    const user = await User.create(req.body);
+    res.status(200).json({ message: "User registered", user });
+    if (!user) {
+      return res.status(400).json({
+        status: false,
+        message: `User with ${User.email} mail id already exists`,
+      });
     }
-
-    const hashed = await bcrypt.hash(password, 10);
-
-    const user = await User.create({ name, email, role, password: hashed });
-    await user.save();
-    res
-      .status(200)
-      .json({ message: "User registered successfully", data: user });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+  } catch (error) {
+    res.status(500).json({ error: "Register Failed,Internal server error" });
   }
 };
 
@@ -31,70 +26,64 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: "Invalid email" });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: "Wrong password" });
-
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: process.env.JWT_EXPIRES_IN,
-    });
-
-    res.status(200).json({ token, data: user });
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+    const match = await user.comparePassword(password);
+    if (!match) return res.status(400).json({ message: "Invalid credentials" });
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: process.env.JWT_EXPIRES_IN,
+      }
+    );
+    res.status(200).json({ message: "User logged successfully", token });
+  } catch (error) {
+    res.status(500).json({ error: "loggin failed" });
   }
 };
 export const forgotPassword = async (req, res) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-    const resetToken = crypto.randomBytes(32).toString("hex");
-
-    user.resetPasswordToken = crypto
+    const user = await User.findOne({ email: req.user.email });
+    if (!user) return res.status(404).json({ message: "Email not found" });
+    console.log(user)
+    user.resetToken = crypto
       .createHash("sha256")
       .update(resetToken)
       .digest("hex");
-    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000; // 10 min
+
+    user.resetToken = resetToken;
+    console.log("TOKEN SENT TO EMAIL:", resetToken);
+    user.resetTokenExpire = Date.now() + 10 * 60 * 1000;
     await user.save();
-    const resetURL = `${resetToken}`;
-    const message = `${resetURL}`;
+    const url = `${resetToken}`;
+    await sendEmail(user.email, "Password Reset", `Reset Link: ${url}`);
 
-    await sendEmail(user.email, "Password Reset", message);
-
-    res.status(200).json({ message: "Reset link sent to email" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(200).json({ message: "Reset link sent" });
+  } catch (error) {
+    res.status(500).json({ error: "forgot failed" });
   }
 };
-
-export const ResetPassword = async (req, res) => {
+export const resetPassword = async (req, res) => {
   try {
-     const { token } = req.params;
-     const { password } = req.body;
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(token)
-      .digest("hex");
-
     const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() },
+      resetToken: req.params.token,
+      resetTokenExpire: { $gt: Date.now() },
     });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid or expired token" });
-    }
-    user.password = await bcrypt.hash(password, 10);
+    console.log("TOKEN RECEIVED IN URL:", req.params.token);
 
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
+    const foundUser = await User.findOne({ resetToken: req.params.token });
+    console.log("FOUND USER:", foundUser);
 
+    if (!user) return res.status(400).json({ message: "Token invalid" });
+
+    user.password = req.body.password;
+    user.resetToken = undefined;
+    user.resetTokenExpire = undefined;
     await user.save();
 
-    res.json({ message: "Password reset success" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(200).json({ message: "Password updated" });
+  } catch (error) {
+    res.status(500).json({ error: "reset failed" });
   }
 };

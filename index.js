@@ -4,8 +4,8 @@ import dotenv from 'dotenv';
 import bodyParser from 'body-parser';
 import connectDB from './Database/DBconfig.js';
 import authrouter from "./Routers/auth.router.js";
-import ticketrouter from"./Routers/ticket.router.js";
-import adminrouter from "./Routers/admin.router.js";
+import ticketrouter from "./Routers/ticket.router.js";
+
 dotenv.config();
 const port = process.env.PORT
 const app = express();
@@ -19,7 +19,7 @@ app.get("/", (req, res) => {
 });
 app.use('/api/auth', authrouter)
 app.use("/api/ticket", ticketrouter);
-app.use("/api/admin", adminrouter);
+
 app.listen(port, () => {
   console.log("http://localhost:", port);
 });

@@ -1,64 +1,45 @@
 import Ticket from "../Models/ticket.schema.js";
 
-// USER → Create ticket
 export const createTicket = async (req, res) => {
   try {
     const ticket = await Ticket.create({
       title: req.body.title,
       description: req.body.description,
-      createdBy: req.user._id,
+      createdBy: req.user.id,
     });
-    res.json({ message: "Ticket created", ticket });
+    res.status(200).status(200).json(ticket);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
 
-// USER → Get only OWN tickets
-export const getMyTickets = async (req, res) => {
+// GET ALL TICKETS (Admin only)
+export const getAllTickets = async (req, res) => {
   try {
-    const tickets = await Ticket.find({ createdBy: req.user._id });
-    res.json(tickets);
+    const tickets = await Ticket.find();
+    res.status(200).json(tickets);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ message: err.message });
   }
 };
-
-// USER → Update OWN ticket
-// export const updateMyTicket = async (req, res) => {
-//   try {
-//     const ticket = await Ticket.findOne({
-//       _id: req.params.id,
-//       createdBy: req.user._id,
-//     });
-
-//     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-
-//     Object.assign(ticket, req.body);
-//     await ticket.save();
-
-//     res.json({ message: "Ticket updated", ticket });
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// };
-
-// USER → Delete OWN ticket
-export const deleteMyTicket = async (req, res) => {
-  try {
-    const ticket = await Ticket.findOneAndDelete({
-      _id: req.params.id,
-      createdBy: req.user._id,
-    });
-
-    if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-      if (ticket.user.toString() !== req.user.id)
-        return res.status(403).json({ msg: "You can delete only your ticket" });
-
-      await ticket.deleteOne();
-
-    res.json({ message: "Ticket deleted" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+// GET USER-TICKETS (user sees only their own)
+export const getUserTickets = async (req, res) => {
+    try {
+        const tickets = await Ticket.find({ createdBy: req.user.id });
+        res.status(200).json(tickets);
+    } catch (err) {
+         res.status(500).json({ message: err.message });
+    }
+    
 };
+
+
+// UPDATE TICKET (Admin only)
+export const updateTicket = async (req, res) => {
+    try {
+        const ticket = await Ticket.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.status(200).json(ticket);
+    } catch (error) {
+        
+    }
+}; 
